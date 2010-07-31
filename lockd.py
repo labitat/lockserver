@@ -40,7 +40,13 @@ def ui(ser):
 
         
 
-s = serial.Serial(port='/dev/ttyS0',baudrate=9600)
+s = serial.Serial(
+	port     = '/dev/ttyS0',
+	baudrate = 9600,
+	bytesize = 8,
+	parity   = 'E',
+	stopbits = 2
+)
 
 thread.start_new_thread(ui,(s,))
 
