@@ -1,0 +1,7 @@
+#!/bin/sh
+
+/bin/sleep 20
+
+/opt/lockserver/init_button.sh
+
+/opt/lockserver/lockd.py 2>> /var/log/lockserver.log >> /var/log/lockserver.debug.log &
