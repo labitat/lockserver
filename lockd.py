@@ -1,4 +1,5 @@
 #!/usr/bin/env python2.6
+
 from pysqlite2 import dbapi2 as sqlite
 import serial, thread
 from datetime import datetime
@@ -19,26 +20,23 @@ web_update_interval = 60 * 10 # number of seconds to wait between fetching a new
 connection = sqlite.connect('/opt/lockserver/users.db')
 cursor = connection.cursor()
 
-
 def ui(ser):
-        cur_mode = "D"
-        last_state = "1\n"
-        while(True):
-                button = open('/sys/class/gpio/gpio15/value', 'r')
-                btn_state = button.read()
-                if btn_state == "0\n" and last_state == "1\n":
-                        if cur_mode == "D":
-                                print "Switching to night mode"
-                                cur_mode = "N"
-                        else:
-                                print "Switching to day mode"
-                                cur_mode = "D"
-                        ser.write(cur_mode)
-                last_state = btn_state
-                button.close()
-                time.sleep(0.05)
-
-        
+	cur_mode = "D"
+	last_state = "1\n"
+	while(True):
+		button = open('/sys/class/gpio/gpio15/value', 'r')
+		btn_state = button.read()
+		if btn_state == "0\n" and last_state == "1\n":
+			if cur_mode == "D":
+				print "Switching to night mode"
+				cur_mode = "N"
+			else:
+				print "Switching to day mode"
+				cur_mode = "D"
+			ser.write(cur_mode)
+		last_state = btn_state
+		button.close()
+		time.sleep(0.05)
 
 s = serial.Serial(
 	port     = '/dev/ttyS0',
@@ -50,43 +48,39 @@ s = serial.Serial(
 
 thread.start_new_thread(ui,(s,))
 
-
 def update_from_webserver():
+	con = sqlite.connect('users.db')
+	cur = con.cursor()
 
-        con = sqlite.connect('users.db')
-        cur = con.cursor()
+	try:
+		params = urllib.urlencode({'key': 'xxx'})
+		d = urllib.urlopen(get_data_url, params)
+		data = d.read()
 
-        try: 
-                params = urllib.urlencode({'key': 'xxx'})
-                d = urllib.urlopen(get_data_url, params)
-                data = d.read()
-                
-                members = json.loads(data)
-                
-                for member in members:
-                        cur.execute("update hashes set hash = ?, expires = ? where member = ?", [member['hash'], member['expiry_date'], member['login']])
-                        if cur.rowcount == 0:
-                                cur.execute("insert into hashes (member, hash, expires) values (?, ?, ?)", [member['login'], member['hash'], member['expiry_date']])
-                                if cur.rowcount == 0:
-                                        print "Error inserting new row"
-                                        return False
-                                else:
-                                        print "Inserted new row"
-                        else:
-                                print "Updated existing row"
+		members = json.loads(data)
 
+		for member in members:
+			cur.execute("update hashes set hash = ?, expires = ? where member = ?", [member['hash'], member['expiry_date'], member['login']])
+			if cur.rowcount == 0:
+				cur.execute("insert into hashes (member, hash, expires) values (?, ?, ?)", [member['login'], member['hash'], member['expiry_date']])
+				if cur.rowcount == 0:
+					print "Error inserting new row"
+					return False
+				else:
+					print "Inserted new row"
+			else:
+				print "Updated existing row"
 
-                con.commit()
-                return True
-        except:
+		con.commit()
+		return True
+	except:
 		print ""
 		print str(datetime.now())
 		traceback.print_exc(file=sys.stderr)
-                return False
-
+		return False
 
 def periodic_updater():
-        while(True):
+	while(True):
 		try:
 			update_from_webserver()
 			time.sleep(web_update_interval)
@@ -96,10 +90,7 @@ def periodic_updater():
 			traceback.print_exc(file=sys.stderr)
 			pass
 
-
-
 thread.start_new_thread(periodic_updater,())
-
 
 def send_to_webserver(hash):
 	try:
@@ -117,9 +108,6 @@ def send_to_webserver(hash):
 		print str(datetime.now())
 		traceback.print_exc(file=sys.stderr)
 		return False
-
-
-
 
 while(True):
 	try:
