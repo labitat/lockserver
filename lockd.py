@@ -142,3 +142,4 @@ while True:
 		print str(datetime.now())
 		traceback.print_exc(file=sys.stderr)
 
+# vim: set ts=4 sw=4 :
