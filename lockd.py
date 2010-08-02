@@ -15,7 +15,10 @@ except ImportError:
 webserver_password = 'xxx'
 send_hash_url = "https://labitat.dk/member/money/doorputer_new_hash"
 get_data_url = "https://labitat.dk/member/money/doorputer_get_dates"
-web_update_interval = 60 * 10 # number of seconds to wait between fetching a new version of the user database
+
+# number of seconds to wait between fetching
+# a new version of the user database
+web_update_interval = 60 * 10
 
 connection = sqlite.connect('/opt/lockserver/users.db')
 cursor = connection.cursor()
@@ -23,7 +26,7 @@ cursor = connection.cursor()
 def ui(ser):
 	cur_mode = "D"
 	last_state = "1\n"
-	while(True):
+	while True:
 		button = open('/sys/class/gpio/gpio15/value', 'r')
 		btn_state = button.read()
 		if btn_state == "0\n" and last_state == "1\n":
@@ -46,7 +49,7 @@ s = serial.Serial(
 	stopbits = 2
 )
 
-thread.start_new_thread(ui,(s,))
+thread.start_new_thread(ui, (s,))
 
 def update_from_webserver():
 	con = sqlite.connect('users.db')
@@ -80,7 +83,7 @@ def update_from_webserver():
 		return False
 
 def periodic_updater():
-	while(True):
+	while True:
 		try:
 			update_from_webserver()
 			time.sleep(web_update_interval)
@@ -89,14 +92,18 @@ def periodic_updater():
 			print str(datetime.now())
 			traceback.print_exc(file=sys.stderr)
 
-thread.start_new_thread(periodic_updater,())
+thread.start_new_thread(periodic_updater, ())
 
 def send_to_webserver(hash):
 	try:
-		params = urllib.urlencode({'key': webserver_password, 'hash': hash})
+		params = urllib.urlencode({
+				'key':  webserver_password,
+				'hash': hash
+		})
 		d = urllib.urlopen(send_hash_url, params)
-		# 202 means that the same unknown hash was received twice before a timeout
-		# which allows a website-user to claim the hash as their own
+		# 202 means that the same unknown hash was
+		# received twice before a timeout which allows
+		# a website-user to claim the hash as their own
 		print "sending to webserver"
 		if d.getcode() == 202:
 			return True
@@ -108,13 +115,13 @@ def send_to_webserver(hash):
 		traceback.print_exc(file=sys.stderr)
 		return False
 
-while(True):
+while True:
 	try:
 		data = s.readline()
 		data = data[:-1]
 		if data[:5] != "ALIVE":
 			print str(datetime.now()) + " DEBUG: " + data
-		if data[:5] == "HASH+":
+		elif data[:5] == "HASH+":
 			h = data[5:45]
 			cursor.execute("SELECT * FROM hashes WHERE hash = ?", [h])
 			r = cursor.fetchone()
