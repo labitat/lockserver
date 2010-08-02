@@ -60,9 +60,9 @@ def update_from_webserver():
 		members = json.loads(data)
 
 		for member in members:
-			cur.execute("update hashes set hash = ?, expires = ? where member = ?", [member['hash'], member['expiry_date'], member['login']])
+			cur.execute("UPDATE hashes SET hash = ?, expires = ? WHERE member = ?", [member['hash'], member['expiry_date'], member['login']])
 			if cur.rowcount == 0:
-				cur.execute("insert into hashes (member, hash, expires) values (?, ?, ?)", [member['login'], member['hash'], member['expiry_date']])
+				cur.execute("INSERT INTO hashes (member, hash, expires) VALUES (?, ?, ?)", [member['login'], member['hash'], member['expiry_date']])
 				if cur.rowcount == 0:
 					print "Error inserting new row"
 					return False
