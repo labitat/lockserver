@@ -88,7 +88,6 @@ def periodic_updater():
 			print ""
 			print str(datetime.now())
 			traceback.print_exc(file=sys.stderr)
-			pass
 
 thread.start_new_thread(periodic_updater,())
 
@@ -115,7 +114,6 @@ while(True):
 		data = data[:-1]
 		if data[:5] != "ALIVE":
 			print str(datetime.now()) + " DEBUG: " + data
-			pass
 		if data[:5] == "HASH+":
 			h = data[5:45]
 			cursor.execute("SELECT * FROM hashes WHERE hash = ?", [h])
@@ -136,5 +134,4 @@ while(True):
 		print ""
 		print str(datetime.now())
 		traceback.print_exc(file=sys.stderr)
-		pass
 
