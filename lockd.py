@@ -53,7 +53,7 @@ def update_from_webserver():
 	cur = con.cursor()
 
 	try:
-		params = urllib.urlencode({'key': 'xxx'})
+		params = urllib.urlencode({'key': webserver_password})
 		d = urllib.urlopen(get_data_url, params)
 		data = d.read()
 
