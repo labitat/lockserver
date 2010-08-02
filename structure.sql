@@ -1,2 +1,16 @@
-create table hashes (id integer primary key autoincrement, hash varchar(40), accesstype integer, charges integer, member varchar(60), expires date, lastuse date);
-create table log (id integer primary key autoincrement, event integer, eventtime datetime, hash integer);
+CREATE TABLE hashes (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	hash VARCHAR(40),
+	accesstype INTEGER,
+	charges INTEGER,
+	member VARCHAR(60),
+	expires DATE,
+	lastuse DATE
+);
+
+CREATE TABLE log (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	event INTEGER,
+	eventtime DATETIME,
+	hash INTEGER
+);
