@@ -134,9 +134,11 @@ while True:
 	try:
 		data = s.readline()
 		data = data[:-1]
+
 		if data[:5] != "ALIVE":
 			print str(datetime.now()) + " DEBUG: " + data
-		elif data[:5] == "HASH+":
+
+		if data[:5] == "HASH+":
 			h = data[5:45]
 			cursor.execute("SELECT * FROM hashes WHERE hash = ?", [h])
 			r = cursor.fetchone()
