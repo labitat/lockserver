@@ -140,11 +140,16 @@ while True:
 
 		if data[:5] == "HASH+":
 			h = data[5:45]
-			cursor.execute("SELECT * FROM hashes WHERE hash = ?", [h])
-			r = cursor.fetchone()
-			if r != None:
+			cursor.execute(
+				"SELECT 1 "
+				"FROM hashes "
+				"WHERE hash = ? AND expires > ?", [
+					h,
+					datetime.now().strftime('%Y-%m-%d')
+				]
+			)
+			if cursor.fetchone() != None:
 				s.write("O")
-				print r
 				print "Opening"
 			else:
 				if send_to_webserver(h):
