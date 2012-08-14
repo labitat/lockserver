@@ -41,18 +41,20 @@ def ui(ser):
 		button.close()
 		time.sleep(0.05)
 
-s = serial.Serial(
-	port     = '/dev/ttyS0',
-	baudrate = 9600,
-	bytesize = 8,
-	parity   = 'E',
-	stopbits = 2
-)
+def get_serial():
+	return serial.Serial(
+		port     = '/dev/ttyS0',
+		baudrate = 9600,
+		bytesize = 8,
+		parity   = 'E',
+		stopbits = 2)
+
+s = get_serial()
 
 thread.start_new_thread(ui, (s,))
 
 def update_from_webserver():
-	con = sqlite.connect('users.db')
+	con = sqlite.connect('/opt/lockserver/users.db')
 	cur = con.cursor()
 
 	try:
@@ -163,5 +165,11 @@ while True:
 		print ""
 		print str(datetime.now())
 		traceback.print_exc(file=sys.stderr)
+		# Reset the serial in case it got stuck
+		try:
+			s.close()
+		except:
+			pass
+		s = get_serial()
 
 # vim: set ts=4 sw=4 :
