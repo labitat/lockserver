@@ -94,8 +94,7 @@ def update_from_webserver():
 		con.commit()
 		return True
 	except:
-		print ""
-		print str(datetime.now())
+		sys.stderr.write("\n"+str(datetime.now())+"\n")
 		traceback.print_exc(file=sys.stderr)
 		return False
 
@@ -105,8 +104,7 @@ def periodic_updater():
 			update_from_webserver()
 			time.sleep(web_update_interval)
 		except:
-			print ""
-			print str(datetime.now())
+			sys.stderr.write("\n"+str(datetime.now())+"\n")
 			traceback.print_exc(file=sys.stderr)
 
 thread.start_new_thread(periodic_updater, ())
@@ -127,8 +125,7 @@ def send_to_webserver(hash):
 		else:
 			return False
 	except:
-		print ""
-		print str(datetime.now())
+		sys.stderr.write("\n"+str(datetime.now())+"\n")
 		traceback.print_exc(file=sys.stderr)
 		return False
 
@@ -162,14 +159,12 @@ while True:
 					print "Rejected"
 	except:
 		# print exception
-		print ""
-		print str(datetime.now())
+		sys.stderr.write("\n"+str(datetime.now())+"\n")
 		traceback.print_exc(file=sys.stderr)
-		# Reset the serial in case it got stuck
-		try:
-			s.close()
-		except:
-			pass
-		s = get_serial()
+		# Sometimes we loose the serial connection here.
+		# Rather than try to coordinate serial port reopen across
+		# all the threads, just exit, and let parent init script
+		# restart us.
+		exit()
 
 # vim: set ts=4 sw=4 :
