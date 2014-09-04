@@ -66,15 +66,25 @@ def update_from_webserver():
 
 		for member in members:
 			cur.execute(
-				"UPDATE hashes "
-				"SET hash = ?, expires = ? "
+				"SELECT hash, expires FROM hashes "
 				"WHERE member = ?", [
-					member['hash'],
-					member['expiry_date'],
 					member['login']
 				]
 			)
-			if cur.rowcount == 0:
+			row = cur.fetchone()
+			if row:
+				if row[0] != member['hash'] or row[1] != member['expiry_date']:
+					cur.execute(
+						"UPDATE hashes "
+						"SET hash = ?, expires = ? "
+						"WHERE member = ?", [
+							member['hash'],
+							member['expiry_date'],
+							member['login']
+						]
+					)
+					print "Updated existing row"
+			else:
 				cur.execute(
 					"INSERT INTO hashes (member, hash, expires) "
 					"VALUES (?, ?, ?)",	[
@@ -88,8 +98,6 @@ def update_from_webserver():
 					return False
 				else:
 					print "Inserted new row"
-			else:
-				print "Updated existing row"
 
 		con.commit()
 		return True
