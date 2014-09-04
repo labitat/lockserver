@@ -18,9 +18,9 @@ get_data_url = "https://labitat.dk/member/money/doorputer_get_dates"
 
 # number of seconds to wait between fetching
 # a new version of the user database
-web_update_interval = 60 * 10
+web_update_interval = 60
 
-connection = sqlite.connect('/opt/lockserver/users.db')
+connection = sqlite.connect('/home/doorman/users.db')
 cursor = connection.cursor()
 
 def ui(ser):
@@ -54,7 +54,7 @@ s = get_serial()
 thread.start_new_thread(ui, (s,))
 
 def update_from_webserver():
-	con = sqlite.connect('/opt/lockserver/users.db')
+	con = sqlite.connect('/home/doorman/users.db')
 	cur = con.cursor()
 
 	try:
