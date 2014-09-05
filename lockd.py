@@ -165,6 +165,6 @@ while True:
 		# Rather than try to coordinate serial port reopen across
 		# all the threads, just exit, and let parent init script
 		# restart us.
-		exit()
+		sys.exit()
 
 # vim: set ts=4 sw=4 :
