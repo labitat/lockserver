@@ -7,6 +7,7 @@ export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 start_lockd(){
 	cd /home/doorman/lockserver
+	export PYTHONUNBUFFERED=1
 	while true ; do
 		./lockd.py 2>> /var/log/lockserver.log >> /var/log/lockserver.debug.log
 		echo restarting in 5 sec
