@@ -150,7 +150,7 @@ while True:
 			cursor.execute(
 				"SELECT 1 "
 				"FROM hashes "
-				"WHERE hash = ? AND expires > ?", [
+				"WHERE hash = ? AND expires >= ?", [
 					h,
 					datetime.now().strftime('%Y-%m-%d')
 				]
