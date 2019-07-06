@@ -5,11 +5,14 @@
 
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
+LOGFILE=/var/log/lockserver.log
+DEBUGFILE=/var/log/lockserver.debug.log
+
 start_lockd(){
 	cd /home/doorman/lockserver
 	export PYTHONUNBUFFERED=1
 	while true ; do
-		./lockd.py 2>> /var/log/lockserver.log >> /var/log/lockserver.debug.log
+		./lockd.py >> "$LOGFILE" 2>> "$DEBUGFILE"
 		echo restarting in 5 sec
 		sleep 5
 	done
@@ -21,8 +24,11 @@ start_tmux(){
 
 init(){
 	# init button
-	modprobe rdc321x_gpio
-	echo 15 > /sys/class/gpio/export
+	echo 2 > /sys/class/gpio/export
+	echo 1 > /sys/class/gpio/gpio2/active_low
+
+	touch "$LOGFILE" "$DEBUGFILE"
+	chown doorman:doorman "$LOGFILE" "$DEBUGFILE"
 
 	# re-start script as doorman
 	su -c '/home/doorman/lockserver/start.sh start-tmux' doorman

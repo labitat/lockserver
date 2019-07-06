@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.6
+#!/usr/bin/env python2.7
 
 from pysqlite2 import dbapi2 as sqlite
 import serial, thread
@@ -27,7 +27,7 @@ def ui(ser):
 	cur_mode = "D"
 	last_state = "1\n"
 	while True:
-		button = open('/sys/class/gpio/gpio15/value', 'r')
+		button = open('/sys/class/gpio/gpio2/value', 'r')
 		btn_state = button.read()
 		if btn_state == "0\n" and last_state == "1\n":
 			if cur_mode == "D":
@@ -43,7 +43,7 @@ def ui(ser):
 
 def get_serial():
 	return serial.Serial(
-		port     = '/dev/ttyS0',
+		port     = '/dev/ttyUSB0',
 		baudrate = 9600,
 		bytesize = 8,
 		parity   = 'E',
