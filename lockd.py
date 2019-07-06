@@ -1,20 +1,18 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/python3 -u
 
-from pysqlite2 import dbapi2 as sqlite
-import serial, thread
+import sqlite3 as sqlite
+import serial
+import threading
 from datetime import datetime
 import sys, traceback
 import time
-import urllib
-
-try:
-	import json
-except ImportError: 
-	import simplejson as json
+import urllib.request
+import urllib.parse
+import json
 
 webserver_password = 'xxx'
-send_hash_url = "https://labitat.dk/member/money/doorputer_new_hash"
-get_data_url = "https://labitat.dk/member/money/doorputer_get_dates"
+SEND_HASH_URL = "https://labitat.dk/member/money/doorputer_new_hash?{}"
+GET_DATA_URL  = "https://labitat.dk/member/money/doorputer_get_dates?{}"
 
 # number of seconds to wait between fetching
 # a new version of the user database
@@ -24,45 +22,42 @@ connection = sqlite.connect('/home/doorman/users.db')
 cursor = connection.cursor()
 
 def ui(ser):
-	cur_mode = "D"
+	cur_mode = b"D"
 	last_state = "1\n"
 	while True:
 		button = open('/sys/class/gpio/gpio2/value', 'r')
 		btn_state = button.read()
 		if btn_state == "0\n" and last_state == "1\n":
-			if cur_mode == "D":
-				print "Switching to night mode"
-				cur_mode = "N"
+			if cur_mode == b"D":
+				print("Switching to night mode")
+				cur_mode = b"N"
 			else:
-				print "Switching to day mode"
-				cur_mode = "D"
+				print("Switching to day mode")
+				cur_mode = b"D"
 			ser.write(cur_mode)
 		last_state = btn_state
 		button.close()
 		time.sleep(0.05)
 
-def get_serial():
-	return serial.Serial(
-		port     = '/dev/ttyUSB0',
-		baudrate = 9600,
-		bytesize = 8,
-		parity   = 'E',
-		stopbits = 2)
-
-s = get_serial()
-
-thread.start_new_thread(ui, (s,))
+s = serial.Serial(
+	port	 = '/dev/ttyUSB0',
+	baudrate = 9600,
+	bytesize = 8,
+	parity   = 'E',
+	stopbits = 2
+)
+threading.Thread(target=ui, args=(s,)).start()
 
 def update_from_webserver():
 	con = sqlite.connect('/home/doorman/users.db')
 	cur = con.cursor()
 
 	try:
-		params = urllib.urlencode({'key': webserver_password})
-		d = urllib.urlopen(get_data_url, params)
-		data = d.read()
-
-		members = json.loads(data)
+		params = urllib.parse.urlencode({'key': webserver_password})
+		members = None
+		with urllib.request.urlopen(GET_DATA_URL.format(params)) as d:
+			data = d.read().decode('utf-8')
+			members = json.loads(data)
 
 		for member in members:
 			cur.execute(
@@ -83,7 +78,7 @@ def update_from_webserver():
 							member['login']
 						]
 					)
-					print "Updated existing row"
+					print("Updated existing row")
 			else:
 				cur.execute(
 					"INSERT INTO hashes (member, hash, expires) "
@@ -94,15 +89,15 @@ def update_from_webserver():
 					]
 				)
 				if cur.rowcount == 0:
-					print "Error inserting new row"
+					print("Error inserting new row")
 					return False
 				else:
-					print "Inserted new row"
+					print("Inserted new row")
 
 		con.commit()
 		return True
 	except:
-		sys.stderr.write("\n"+str(datetime.now())+"\n")
+		sys.stderr.write("\n{}\n".format(datetime.now()))
 		traceback.print_exc(file=sys.stderr)
 		return False
 
@@ -112,28 +107,28 @@ def periodic_updater():
 			update_from_webserver()
 			time.sleep(web_update_interval)
 		except:
-			sys.stderr.write("\n"+str(datetime.now())+"\n")
+			sys.stderr.write("\n{}\n".format(datetime.now()))
 			traceback.print_exc(file=sys.stderr)
 
-thread.start_new_thread(periodic_updater, ())
+threading.Thread(target=periodic_updater).start()
 
 def send_to_webserver(hash):
 	try:
-		params = urllib.urlencode({
-				'key':  webserver_password,
-				'hash': hash
+		params = urllib.parse.urlencode({
+			'key':  webserver_password,
+			'hash': hash
 		})
-		d = urllib.urlopen(send_hash_url, params)
 		# 202 means that the same unknown hash was
 		# received twice before a timeout which allows
 		# a website-user to claim the hash as their own
-		print "sending to webserver"
-		if d.getcode() == 202:
-			return True
-		else:
-			return False
+		print("sending to webserver")
+		with urllib.request.urlopen(SEND_HASH_URL.format(params)) as d:
+			if d.getcode() == 202:
+				return True
+			else:
+				return False
 	except:
-		sys.stderr.write("\n"+str(datetime.now())+"\n")
+		sys.stderr.write("\n{}\n".format(datetime.now()))
 		traceback.print_exc(file=sys.stderr)
 		return False
 
@@ -142,11 +137,11 @@ while True:
 		data = s.readline()
 		data = data[:-1]
 
-		if data[:5] != "ALIVE":
-			print str(datetime.now()) + " DEBUG: " + data
+		if data[:5] != b"ALIVE":
+			print("DEBUG: {}".format(data))
 
-		if data[:5] == "HASH+":
-			h = data[5:45]
+		if data[:5] == b"HASH+":
+			h = data[5:45].decode('utf-8')
 			cursor.execute(
 				"SELECT 1 "
 				"FROM hashes "
@@ -156,18 +151,18 @@ while True:
 				]
 			)
 			if cursor.fetchone() != None:
-				s.write("O")
-				print "Opening"
+				s.write(b"O")
+				print("Opening")
 			else:
 				if send_to_webserver(h):
-					s.write("V")
-					print "Validated"
+					s.write(b"V")
+					print("Validated")
 				else:
-					s.write("R")
-					print "Rejected"
+					s.write(b"R")
+					print("Rejected")
 	except:
 		# print exception
-		sys.stderr.write("\n"+str(datetime.now())+"\n")
+		sys.stderr.write("\n{}\n".format(datetime.now()))
 		traceback.print_exc(file=sys.stderr)
 		# Sometimes we loose the serial connection here.
 		# Rather than try to coordinate serial port reopen across
@@ -175,4 +170,4 @@ while True:
 		# restart us.
 		sys.exit()
 
-# vim: set ts=4 sw=4 :
+# vim: set ts=4 sw=4 noet:
