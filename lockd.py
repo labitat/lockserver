@@ -10,7 +10,12 @@ import urllib.request
 import urllib.parse
 import json
 
-webserver_password = 'xxx'
+def get_password():
+	with open('/home/doorman/lockserver.password', 'r') as f:
+		return f.readline().strip()
+
+webserver_password = get_password()
+
 SEND_HASH_URL = "https://labitat.dk/member/money/doorputer_new_hash?{}"
 GET_DATA_URL  = "https://labitat.dk/member/money/doorputer_get_dates?{}"
 
