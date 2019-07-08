@@ -9,6 +9,7 @@ import time
 import urllib.request
 import urllib.parse
 import json
+import select
 
 def get_password():
 	with open('/home/doorman/lockserver.password', 'r') as f:
@@ -24,22 +25,41 @@ GET_DATA_URL  = "https://labitat.dk/member/money/doorputer_get_dates?{}"
 WEB_UPDATE_INTERVAL = 60
 
 def ui(ser):
-	cur_mode = b"D"
-	last_state = "1\n"
+	poll = select.poll()
+	button = open('/sys/class/gpio/gpio2/value', 'r')
+	poll.register(button, select.POLLPRI | select.POLLERR)
+
+	print("Switching to night mode")
+	daymode = False
+	ser.write(b'N')
+
 	while True:
-		button = open('/sys/class/gpio/gpio2/value', 'r')
-		btn_state = button.read()
-		if btn_state == "0\n" and last_state == "1\n":
-			if cur_mode == b"D":
-				print("Switching to night mode")
-				cur_mode = b"N"
-			else:
-				print("Switching to day mode")
-				cur_mode = b"D"
-			ser.write(cur_mode)
-		last_state = btn_state
-		button.close()
-		time.sleep(0.05)
+		# clear events by reading the state
+		button.seek(0, 0)
+		button.read()
+		# wait for rising edge
+		poll.poll()
+
+		# wait 10ms and check if the button is still pressed
+		time.sleep(0.01)
+		button.seek(0, 0)
+		if button.read() == "0\n":
+			print('GPIO noise')
+			continue
+
+		if daymode:
+			print("Switching to night mode")
+			daymode = False
+			ser.write(b'N')
+		else:
+			print("Switching to day mode")
+			daymode = True
+			ser.write(b'D')
+
+		# wait for falling edge
+		poll.poll()
+		# wait a little more to debounce
+		time.sleep(0.1)
 
 ser = serial.Serial(
 	port     = '/dev/ttyUSB0',
