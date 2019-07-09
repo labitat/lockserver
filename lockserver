@@ -80,7 +80,7 @@ init()
 
 def ui():
 	poll = select.poll()
-	button = open(os.path.join(GPIO_PATH, 'value'), 'r')
+	button = open(os.path.join(GPIO_PATH, 'value'), 'rb')
 	poll.register(button, select.POLLPRI | select.POLLERR)
 
 	print("Switching to night mode")
@@ -97,7 +97,7 @@ def ui():
 		# wait 10ms and check if the button is still pressed
 		time.sleep(0.01)
 		button.seek(0, 0)
-		if button.read() == "0\n":
+		if button.read() != b"1\n":
 			print('GPIO noise')
 			continue
 
