@@ -12,6 +12,7 @@ import urllib.parse
 import json
 import select
 import configparser
+import socket
 
 def init():
 	global SEND_HASH_URL
@@ -193,6 +194,16 @@ def send_to_webserver(hash):
 
 con = sqlite.connect('file:{}?mode=ro'.format(DB_PATH), uri=True)
 cur = con.cursor()
+
+# notify systemd we're running if we're started with Type=notify
+if b'NOTIFY_SOCKET' in os.environb:
+	npath = os.environb[b'NOTIFY_SOCKET']
+	if npath[0] == ord('@'):
+		npath = bytearray(npath)
+		npath[0] = 0
+	with socket.socket(family=socket.AF_UNIX, type=socket.SOCK_DGRAM) as s:
+		s.connect(npath)
+		s.send(b"READY=1\nSTATUS=Running\n")
 
 while True:
 	data = SERIAL.readline()
