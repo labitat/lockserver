@@ -191,7 +191,7 @@ def send_to_webserver(hash):
 		traceback.print_exc(file=sys.stderr)
 		return False
 
-con = sqlite.connect(DB_PATH)
+con = sqlite.connect('file:{}?mode=ro'.format(DB_PATH), uri=True)
 cur = con.cursor()
 
 while True:
