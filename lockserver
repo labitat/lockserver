@@ -4,34 +4,88 @@ import sqlite3 as sqlite
 import serial
 import threading
 from datetime import datetime
+import os
 import sys, traceback
 import time
 import urllib.request
 import urllib.parse
 import json
 import select
+import configparser
 
-def get_password():
-	with open('/home/doorman/lockserver.password', 'r') as f:
-		return f.readline().strip()
+def init():
+	global SEND_HASH_URL
+	global GET_DATA_URL
+	global WEB_UPDATE_INTERVAL
+	global WEBSERVER_PASSWORD
+	global DB_PATH
+	global GPIO_PATH
+	global SERIAL
 
-WEBSERVER_PASSWORD = get_password()
+	configpath = None
+	# try $XDG_CONFIG_HOME/lockserver.ini first
+	if 'XDG_CONFIG_HOME' in os.environ:
+		configpath = os.path.join(os.environ['XDG_CONFIG_HOME'], 'lockserver.ini')
+	elif 'HOME' in os.environ:
+		configpath = os.path.join(os.environ['HOME'], '.config', 'lockserver.ini')
+	# fall back to ./lockserver.ini
+	if not os.path.isfile(configpath):
+		configpath = os.path.join(sys.path[0], 'lockserver.ini')
 
-SEND_HASH_URL = "https://labitat.dk/member/money/doorputer_new_hash?{}"
-GET_DATA_URL  = "https://labitat.dk/member/money/doorputer_get_dates?{}"
+	config = configparser.ConfigParser(strict=True)
+	# set defaults
+	config.read_dict({
+		'WebServer': {
+			'SendHashURL': 'https://labitat.dk/member/money/doorputer_new_hash',
+			'GetDataURL':  'https://labitat.dk/member/money/doorputer_get_dates',
+			'UpdateIntervalSec': 60,
+		},
+		'Database': {
+			'Path': os.path.join(sys.path[0], 'users.db'),
+		},
+		'Serial': {
+			'Device': '/dev/ttyUSB0',
+			'Bitrate': 9600,
+			'Parity': 'E',
+			'StopBits': 2,
+		},
+	})
+	# read config file
+	with open(configpath, 'r') as f:
+		config.read_file(f, configpath)
 
-# number of seconds to wait between fetching
-# a new version of the user database
-WEB_UPDATE_INTERVAL = 60
+	SEND_HASH_URL       = config.get('WebServer', 'SendHashUrl') + '?{}'
+	GET_DATA_URL        = config.get('WebServer', 'GetDataUrl') + '?{}'
+	WEB_UPDATE_INTERVAL = config.getint('WebServer', 'UpdateIntervalSec')
+	WEBSERVER_PASSWORD  = config.get('WebServer', 'Password')
 
-def ui(ser):
+	DB_PATH             = config.get('Database', 'Path')
+
+	SERIAL = serial.Serial(
+		port     = config.get('Serial', 'Device'),
+		baudrate = config.getint('Serial', 'Bitrate'),
+		bytesize = 8,
+		parity   = config.get('Serial', 'Parity'),
+		stopbits = config.getint('Serial', 'StopBits'),
+	)
+
+	if config.has_option('DayMode', 'GPIOPath'):
+		GPIO_PATH = config['Daymode']['GPIOPath']
+	elif config.has_option('Daymode', 'GPIONumber'):
+		GPIO_PATH = '/sys/class/gpio/gpio{}'.format(config.getint('Daymode', 'GPIONumber'))
+	else:
+		GPIO_PATH = None
+
+init()
+
+def ui():
 	poll = select.poll()
-	button = open('/sys/class/gpio/gpio2/value', 'r')
+	button = open(os.path.join(GPIO_PATH, 'value'), 'r')
 	poll.register(button, select.POLLPRI | select.POLLERR)
 
 	print("Switching to night mode")
 	daymode = False
-	ser.write(b'N')
+	SERIAL.write(b'N')
 
 	while True:
 		# clear events by reading the state
@@ -50,28 +104,22 @@ def ui(ser):
 		if daymode:
 			print("Switching to night mode")
 			daymode = False
-			ser.write(b'N')
+			SERIAL.write(b'N')
 		else:
 			print("Switching to day mode")
 			daymode = True
-			ser.write(b'D')
+			SERIAL.write(b'D')
 
 		# wait for falling edge
 		poll.poll()
 		# wait a little more to debounce
 		time.sleep(0.1)
 
-ser = serial.Serial(
-	port     = '/dev/ttyUSB0',
-	baudrate = 9600,
-	bytesize = 8,
-	parity   = 'E',
-	stopbits = 2
-)
-threading.Thread(target=ui, args=(ser,), daemon=True).start()
+if GPIO_PATH:
+	threading.Thread(target=ui, daemon=True).start()
 
 def update_from_webserver():
-	con = sqlite.connect('/home/doorman/users.db')
+	con = sqlite.connect(DB_PATH)
 	cur = con.cursor()
 	params = urllib.parse.urlencode({'key': WEBSERVER_PASSWORD})
 
@@ -143,11 +191,11 @@ def send_to_webserver(hash):
 		traceback.print_exc(file=sys.stderr)
 		return False
 
-con = sqlite.connect('/home/doorman/users.db')
+con = sqlite.connect(DB_PATH)
 cur = con.cursor()
 
 while True:
-	data = ser.readline()
+	data = SERIAL.readline()
 	data = data[:-1]
 
 	if data[:5] != b"ALIVE":
@@ -164,15 +212,15 @@ while True:
 			]
 		)
 		if cur.fetchone() != None:
-			ser.write(b"O")
+			SERIAL.write(b"O")
 			print("Opening")
 		else:
 			print("Sending hash to webserver")
 			if send_to_webserver(h):
-				ser.write(b"V")
+				SERIAL.write(b"V")
 				print("Validated")
 			else:
-				ser.write(b"R")
+				SERIAL.write(b"R")
 				print("Rejected")
 
 # vim: set ts=4 sw=4 noet:
